@@ -10,21 +10,27 @@ export class ScrapperService {
   constructor(private httpService: HttpService) {}
 
   async autoUpdateTeacherProfile(teacherUrl:string) {
-    let result = [];
     const articleUrls = await this.getAllArticleUrlFromProfile(teacherUrl).toPromise();
     console.log('articleUrls', articleUrls);
+    // let result = [];
+    this.loadArticle([], articleUrls, 0).then(res=>{console.log('complited article', res)})
+    // for(var i=0;i<articleUrls.length;i++){
 
-    for(var i=0;i<articleUrls.length;i++){
-        try{
-          await setTimeout(()=>{}, 15000)
-          const article = await this.getArticle('https://scholar.google.ru'+articleUrls[i]).toPromise();
-          result.push(article);
-          if(i==articleUrls.length-1) return result;
-        }
-        catch(e){}
-    }
+    // }
   }
+  async loadArticle(result:any, articleUrls:string[], i) {
+    try{
+      await setTimeout(async()=>{
+        const article = await this.getArticle('https://scholar.google.ru'+articleUrls[i]).toPromise();
+        console.log('article', article);
+        result.push(article);
+        if(i==articleUrls.length-1) return result;
+        else this.loadArticle(result, articleUrls, i+1);
+      }, 5000)
 
+    }
+    catch(e){}
+  }
   getAllArticleUrlFromProfile(teacherUrl:string){
     const url = teacherUrl+'&hl=en&cstart=1&pagesize=200';
     let axiosConfig = {
