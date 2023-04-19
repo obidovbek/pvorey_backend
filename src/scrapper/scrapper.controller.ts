@@ -7,6 +7,6 @@ export class ScrapperController {
 
   @Get()
   scrapperController() {
-    return this.scrapperService.getArticle('');
+    return this.scrapperService.autoUpdateTeacherProfile('https://scholar.google.ru/citations?user=I8defrcAAAAJ');
   }
 }

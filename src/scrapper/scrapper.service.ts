@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import * as puppeteer from 'puppeteer';
 import { HttpService } from '@nestjs/axios';
 const jsdom = require("jsdom");
 const { JSDOM } = jsdom;
@@ -10,8 +9,24 @@ export class ScrapperService {
   
   constructor(private httpService: HttpService) {}
 
-  async getAllArticleUrlFromProfile() {
-    const url = 'https://scholar.google.ru/citations?user=I8defrcAAAAJ'+'&hl=en&cstart=1&pagesize=200';
+  async autoUpdateTeacherProfile(teacherUrl:string) {
+    let result = [];
+    const articleUrls = await this.getAllArticleUrlFromProfile(teacherUrl).toPromise();
+    console.log('articleUrls', articleUrls);
+
+    for(var i=0;i<articleUrls.length;i++){
+        try{
+          await setTimeout(()=>{}, 15000)
+          const article = await this.getArticle('https://scholar.google.ru'+articleUrls[i]).toPromise();
+          result.push(article);
+          if(i==articleUrls.length-1) return result;
+        }
+        catch(e){}
+    }
+  }
+
+  getAllArticleUrlFromProfile(teacherUrl:string){
+    const url = teacherUrl+'&hl=en&cstart=1&pagesize=200';
     let axiosConfig = {
       headers: {
           'Content-Type': 'application/json;charset=UTF-8',
@@ -20,7 +35,7 @@ export class ScrapperService {
     };
     return this.httpService.post(url, {}, axiosConfig).pipe(
       map(res=>res.data),
-      map(async (res:any)=>{
+      map((res:any)=>{
         const dom = new JSDOM(res); let article_url = []; let counter = 1; const domwindoc = dom.window.document;
         while(parseInt(domwindoc.querySelector(`#gsc_a_b > tr:nth-child(${counter}) > td.gsc_a_c`).textContent)){
           article_url.push(domwindoc.querySelector(`#gsc_a_b > tr:nth-child(${counter}) > td.gsc_a_t > a`).attributes[0].value)
@@ -30,7 +45,7 @@ export class ScrapperService {
       })
     )
   }
-  async getArticle(url:string) {
+  getArticle(url:string) {
     // const url = 'https://scholar.google.ru/citations?view_op=view_citation&hl=en&user=I8defrcAAAAJ&cstart=1&citation_for_view=I8defrcAAAAJ:0N-VGjzr574C';
     let axiosConfig = {
       headers: {
