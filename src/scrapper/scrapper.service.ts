@@ -3,12 +3,22 @@ import { HttpService } from '@nestjs/axios';
 const jsdom = require("jsdom");
 const { JSDOM } = jsdom;
 import { map } from 'rxjs/operators';
+import * as fs from 'fs';
 
 @Injectable()
 export class ScrapperService {
   
   constructor(private httpService: HttpService) {}
 
+  async readTeachersData(){
+    fs.readdir('../tmp/db_fdu/2022/pvoIns', (err, files)=>{
+      if(err){console.log(err); return;}
+      console.log('files', files);
+    })
+    const fileContents = await fs.readFileSync('test.txt', 'utf8');
+    console.log('fileContents', fileContents);
+    return fileContents;
+  }
   async autoUpdateTeacherProfile(teacherUrl:string) {
     const articleUrls = await this.getAllArticleUrlFromProfile(teacherUrl).toPromise();
     console.log('articleUrls', articleUrls);
