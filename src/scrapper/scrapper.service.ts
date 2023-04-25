@@ -3,29 +3,78 @@ import { HttpService } from '@nestjs/axios';
 const jsdom = require("jsdom");
 const { JSDOM } = jsdom;
 import { map } from 'rxjs/operators';
+import * as fs from 'fs';
 
 @Injectable()
 export class ScrapperService {
   
+  updatingUser;
+  autoUpdateTeacherProfile;
+  recalcUrl = 'http://localhost:3000/api/scrapper/recalculate';
+  folderToDb='../tmp/db_fdu/2022/';
   constructor(private httpService: HttpService) {}
-
-  async autoUpdateTeacherProfile(teacherUrl:string) {
-    const articleUrls = await this.getAllArticleUrlFromProfile(teacherUrl).toPromise();
-    console.log('articleUrls', articleUrls);
-    // let result = [];
-    this.loadArticle([], articleUrls, 0).then(res=>{console.log('complited article', res)})
-    // for(var i=0;i<articleUrls.length;i++){
-
-    // }
+ 
+  async autoUpdate(){
+    return await fs.readdir(this.folderToDb+'pvoIns', async (err, files)=>{
+      if(err){console.log(err); return 12;}
+      this.autoUpdateTeacherProfile = await this.autoUpdateTeacherProfileWrap(files, 0);
+      this.autoUpdateTeacherProfile();
+      return 1;
+    })
   }
-  async loadArticle(result:any, articleUrls:string[], i) {
+  // async readTeachersData(){
+  //   return await fs.readdir(this.folderToDb+'pvoIns', (err, files)=>{
+  //     if(err){console.log(err); return 12;}
+  //     // console.log('files', files);
+  //     return files;
+  //   })
+  //   // const fileContents = await fs.readFileSync(this.folderToDb+'pvoIns/1000.txt', 'utf8');
+  //   // console.log('fileContents', fileContents);
+  //   // return fileContents;
+  // }
+  async removeOldArticles(){
+    return await fs.readdir(this.folderToDb+'fieldsInform/1d5', (err, files)=>{
+      files?.map(file=>{
+        if(file.indexOf('s'+this.updatingUser.added_id+'s') > -1){
+          fs.unlink(this.folderToDb+'fieldsInform/1d5/'+file, (err) => {
+            if (err) throw err;
+            console.log('File deleted successfully!');
+          });
+        }
+      })
+    });
+  }
+  autoUpdateTeacherProfileWrap = async (teacherFolders, index) => {
+    return async ()=>{
+      if(index==teacherFolders.length-1) return "completed";
+        if(index%100===0){this.httpService.get(this.recalcUrl);}
+        try{
+        this.updatingUser = JSON.parse(await fs.readFileSync(this.folderToDb+'pvoIns/'+teacherFolders[index], 'utf8'));
+        await this.removeOldArticles();
+        const articleUrls = await this.getAllArticleUrlFromProfile(this.updatingUser.google_link).toPromise();
+        console.log('articleUrls', articleUrls);
+        if(articleUrls.length) {this.loadArticle([], articleUrls, 0, teacherFolders, index)}
+        else{ this.autoUpdateTeacherProfile();}
+      }catch(e){
+        this.autoUpdateTeacherProfile();
+      }
+      return index++;
+    }
+
+  }
+  async loadArticle(result:any, articleUrls:string[], i, teacherFolders, index) {
     try{
       await setTimeout(async()=>{
         const article = await this.getArticle('https://scholar.google.ru'+articleUrls[i]).toPromise();
-        console.log('article', article);
         result.push(article);
-        if(i==articleUrls.length-1) return result;
-        else this.loadArticle(result, articleUrls, i+1);
+        try{
+          await fs.writeFile(this.folderToDb+'fieldsInform/1d5/'+article[article.length - 1].added_id+'.txt', JSON.stringify(article), function (err) {
+            if (err) throw err;
+            console.log('File created!');
+          });
+        }catch(e){}
+        if(i==articleUrls.length-1) this.autoUpdateTeacherProfile();
+        else this.loadArticle(result, articleUrls, i+1, teacherFolders, index);
       }, 5000)
 
     }
@@ -39,17 +88,19 @@ export class ScrapperService {
           "Access-Control-Allow-Origin": "*",
       }
     };
-    return this.httpService.post(url, {}, axiosConfig).pipe(
-      map(res=>res.data),
-      map((res:any)=>{
-        const dom = new JSDOM(res); let article_url = []; let counter = 1; const domwindoc = dom.window.document;
-        while(parseInt(domwindoc.querySelector(`#gsc_a_b > tr:nth-child(${counter}) > td.gsc_a_c`).textContent)){
-          article_url.push(domwindoc.querySelector(`#gsc_a_b > tr:nth-child(${counter}) > td.gsc_a_t > a`).attributes[0].value)
-          counter++;
-        }
-        return article_url;
-      })
-    )
+    try{
+      return this.httpService.post(url, {}, axiosConfig).pipe(
+        map(res=>res.data),
+        map((res:any)=>{
+          const dom = new JSDOM(res); let article_url = []; let counter = 1; const domwindoc = dom.window.document;
+          while(domwindoc.querySelector(`#gsc_a_b > tr:nth-child(${counter}) > td.gsc_a_c`) && parseInt(domwindoc.querySelector(`#gsc_a_b > tr:nth-child(${counter}) > td.gsc_a_c`).textContent)){
+            article_url.push(domwindoc.querySelector(`#gsc_a_b > tr:nth-child(${counter}) > td.gsc_a_t > a`).attributes[0].value)
+            counter++;
+          }
+          return article_url;
+        })
+      )
+    }catch(e){console.log(e);}
   }
   getArticle(url:string) {
     // const url = 'https://scholar.google.ru/citations?view_op=view_citation&hl=en&user=I8defrcAAAAJ&cstart=1&citation_for_view=I8defrcAAAAJ:0N-VGjzr574C';
@@ -62,24 +113,74 @@ export class ScrapperService {
     return this.httpService.post(url, {}, axiosConfig).pipe(
       map(res=>res.data),
       map(async (res:any)=>{
+
+      try{
         const dom = new JSDOM(res); const domwindoc = dom.window.document;
-        const result = await {
-          article_name: domwindoc.querySelector('#gsc_oci_title > a').textContent,
-          journal_name: domwindoc.querySelector('#gsc_oci_table > div:nth-child(3) > div.gsc_oci_value').textContent,
-          publishing_date: domwindoc.querySelector('#gsc_oci_table > div:nth-child(2) > div.gsc_oci_value').textContent,
-          citiations: 0
-        }
+        let citiations = 0;
         const avaYears = ['2019', '2020', '2021', '2022', '2023']
         for(var i=1;i<20;i++){
           try{
             const year_string_attr = await domwindoc.querySelector(`#gsc_oci_graph_bars > a:nth-child(${i})`).attributes[0].value; 
             if(this.isYearInArray(avaYears, year_string_attr)){
-              result.citiations += parseInt(domwindoc.querySelector(`#gsc_oci_graph_bars > a:nth-child(${i}) > span`).textContent)
+              citiations += parseInt(domwindoc.querySelector(`#gsc_oci_graph_bars > a:nth-child(${i}) > span`).textContent)
             }
           }
           catch(e){}
-        }
+        } 
+        const result = [
+          {
+            "title": "Muallif F.I.Sh",
+            "value": this.updatingUser.lname?.replace(/\s/g,'') + ' ' + this.updatingUser.fname?.replace(/\s/g,'') + ' ' + this.updatingUser.patronymic?.replace(/\s/g,''),
+            "type": "inputautocomplete"
+          },
+          {
+            "title": "Jurnalning nomi",
+            "value": domwindoc.querySelector('#gsc_oci_table > div:nth-child(3) > div.gsc_oci_value')?.textContent,
+            "type": "input"
+          },
+          {
+            "title": "Jurnalning nashr etilgan yili va oyi",
+            "value": domwindoc.querySelector('#gsc_oci_table > div:nth-child(2) > div.gsc_oci_value')?.textContent,
+            "type": "input"
+          },
+          {
+            "title": "Maqolaning nomi",
+            "value": domwindoc.querySelector('#gsc_oci_title > a')?.textContent,
+            "type": "input"
+          },
+          {
+            "title": "Maqolaning qaysi tilda chop etilganligi",
+            "value": "O'zbek",
+            "type": "input"
+          },
+          {
+            "title": "Chop etilgan materiallarning «Google Scholar» va boshqa xalqaro e'tirof etilgan qidiruv tizimlardagi internet manzili (giper xavolasi)",
+            "value": url,
+            "type": "input",
+            "addition": "link"
+          },
+          {
+            "title": "iqtiboslar soni",
+            "value": citiations,
+            "type": "number"
+          },
+          {
+            "created": "08-09-2022 15:07",
+            "indexId": "1d5",
+            "user": "",
+            "status": "complete",
+            "comment": "",
+            "pvoNames": this.updatingUser.lname?.replace(/\s/g,'') + ' ' + this.updatingUser.fname?.replace(/\s/g,'') + ' ' + this.updatingUser.patronymic?.replace(/\s/g,''),
+            "added_id": "s"+this.updatingUser.added_id+"s_"+Math.floor(100000000 + Math.random() * 900000000),
+            "grade": Math.floor(1/((domwindoc.querySelector('#gsc_oci_table > div:nth-child(1) > div.gsc_oci_value')?.textContent.split(",").length)) * 100) / 100,
+          }
+        ]
+        console.log('result', result)
         return result;
+      }catch(e){
+        console.log(e)
+      }  
+        return ;
       })
     )
   }
