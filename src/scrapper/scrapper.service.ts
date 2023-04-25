@@ -10,6 +10,7 @@ export class ScrapperService {
   
   updatingUser;
   autoUpdateTeacherProfile;
+  recalcUrl = 'http://localhost:3000/api/scrapper/recalculate';
   folderToDb='../tmp/db_fdu/2022/';
   constructor(private httpService: HttpService) {}
  
@@ -46,7 +47,8 @@ export class ScrapperService {
   autoUpdateTeacherProfileWrap = async (teacherFolders, index) => {
     return async ()=>{
       if(index==teacherFolders.length-1) return "completed";
-      try{
+        if(index%100===0){this.httpService.get(this.recalcUrl);}
+        try{
         this.updatingUser = JSON.parse(await fs.readFileSync(this.folderToDb+'pvoIns/'+teacherFolders[index], 'utf8'));
         await this.removeOldArticles();
         const articleUrls = await this.getAllArticleUrlFromProfile(this.updatingUser.google_link).toPromise();
