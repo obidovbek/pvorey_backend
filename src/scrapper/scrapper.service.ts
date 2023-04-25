@@ -10,7 +10,6 @@ export class ScrapperService {
   
   updatingUser;
   autoUpdateTeacherProfile;
-  loadArticle
   folderToDb='../tmp/db_fdu/2022/';
   constructor(private httpService: HttpService) {}
  
@@ -18,11 +17,20 @@ export class ScrapperService {
     return await fs.readdir(this.folderToDb+'pvoIns', async (err, files)=>{
       if(err){console.log(err); return 12;}
       this.autoUpdateTeacherProfile = await this.autoUpdateTeacherProfileWrap(files, 0);
-      this.autoUpdateTeacherProfile.next();
+      this.autoUpdateTeacherProfile();
       return 1;
     })
   }
-
+  // async readTeachersData(){
+  //   return await fs.readdir(this.folderToDb+'pvoIns', (err, files)=>{
+  //     if(err){console.log(err); return 12;}
+  //     // console.log('files', files);
+  //     return files;
+  //   })
+  //   // const fileContents = await fs.readFileSync(this.folderToDb+'pvoIns/1000.txt', 'utf8');
+  //   // console.log('fileContents', fileContents);
+  //   // return fileContents;
+  // }
   async removeOldArticles(){
     return await fs.readdir(this.folderToDb+'fieldsInform/1d5', (err, files)=>{
       files?.map(file=>{
@@ -36,48 +44,39 @@ export class ScrapperService {
     });
   }
   autoUpdateTeacherProfileWrap = async (teacherFolders, index) => {
-    return {
-      next: async ()=>{
-        if(index==teacherFolders.length-1) return "completed";
-        try{
-          this.updatingUser = JSON.parse(await fs.readFileSync(this.folderToDb+'pvoIns/'+teacherFolders[index], 'utf8'));
-          await this.removeOldArticles();
-          const articleUrls = await this.getAllArticleUrlFromProfile(this.updatingUser.google_link).toPromise();
-          console.log('articleUrls', articleUrls);
-          if(articleUrls.length) {
-            this.loadArticle = await this.loadArticleWrap(articleUrls, 0);
-            this.loadArticle.next();
-          }
-          else{ this.autoUpdateTeacherProfile.next();}
-        }catch(e){
-          this.autoUpdateTeacherProfile.next();
-        }
-        return index++;
+    return async ()=>{
+      if(index==teacherFolders.length-1) return "completed";
+      try{
+        this.updatingUser = JSON.parse(await fs.readFileSync(this.folderToDb+'pvoIns/'+teacherFolders[index], 'utf8'));
+        await this.removeOldArticles();
+        const articleUrls = await this.getAllArticleUrlFromProfile(this.updatingUser.google_link).toPromise();
+        console.log('articleUrls', articleUrls);
+        if(articleUrls.length) {this.loadArticle([], articleUrls, 0, teacherFolders, index)}
+        else{ this.autoUpdateTeacherProfile();}
+      }catch(e){
+        this.autoUpdateTeacherProfile();
       }
-  }
+      return index++;
+    }
 
   }
-  loadArticleWrap = async(articleUrls:string[], i)=>{
-    return {
-      next: async ()=>{
+  async loadArticle(result:any, articleUrls:string[], i, teacherFolders, index) {
+    try{
+      await setTimeout(async()=>{
+        const article = await this.getArticle('https://scholar.google.ru'+articleUrls[i]).toPromise();
+        result.push(article);
         try{
-          await setTimeout(async()=>{
-            const article = await this.getArticle('https://scholar.google.ru'+articleUrls[i]).toPromise();
-            try{
-              await fs.writeFile(this.folderToDb+'fieldsInform/1d5/'+article[article.length - 1].added_id+'.txt', JSON.stringify(article), function (err) {
-                if (err) throw err;
-                console.log('File created!');
-              });
-            }catch(e){}
-            if(i==articleUrls.length-1) this.autoUpdateTeacherProfile.next();
-            else this.loadArticle.next();
-          }, 5000)
-    
-        }
-        catch(e){}
-        return i++;
-      }
+          await fs.writeFile(this.folderToDb+'fieldsInform/1d5/'+article[article.length - 1].added_id+'.txt', JSON.stringify(article), function (err) {
+            if (err) throw err;
+            console.log('File created!');
+          });
+        }catch(e){}
+        if(i==articleUrls.length-1) this.autoUpdateTeacherProfile();
+        else this.loadArticle(result, articleUrls, i+1, teacherFolders, index);
+      }, 5000)
+
     }
+    catch(e){}
   }
   getAllArticleUrlFromProfile(teacherUrl:string){
     const url = teacherUrl+'&hl=en&cstart=1&pagesize=200';
@@ -102,6 +101,7 @@ export class ScrapperService {
     }catch(e){console.log(e);}
   }
   getArticle(url:string) {
+    // const url = 'https://scholar.google.ru/citations?view_op=view_citation&hl=en&user=I8defrcAAAAJ&cstart=1&citation_for_view=I8defrcAAAAJ:0N-VGjzr574C';
     let axiosConfig = {
       headers: {
           'Content-Type': 'application/json;charset=UTF-8',
