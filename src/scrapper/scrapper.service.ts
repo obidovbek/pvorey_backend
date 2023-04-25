@@ -10,7 +10,7 @@ export class ScrapperService {
   
   updatingUser;
   autoUpdateTeacherProfile;
-  recalcUrl = 'http://localhost:3000/api/scrapper/recalculate';
+  recalcUrl = 'https://serve.ferpi.uz/db/2022/recalc_rating.php';
   folderToDb='../tmp/db_fdu/2022/';
   constructor(private httpService: HttpService) {}
  
@@ -22,16 +22,7 @@ export class ScrapperService {
       return 1;
     })
   }
-  // async readTeachersData(){
-  //   return await fs.readdir(this.folderToDb+'pvoIns', (err, files)=>{
-  //     if(err){console.log(err); return 12;}
-  //     // console.log('files', files);
-  //     return files;
-  //   })
-  //   // const fileContents = await fs.readFileSync(this.folderToDb+'pvoIns/1000.txt', 'utf8');
-  //   // console.log('fileContents', fileContents);
-  //   // return fileContents;
-  // }
+
   async removeOldArticles(){
     return await fs.readdir(this.folderToDb+'fieldsInform/1d5', (err, files)=>{
       files?.map(file=>{
@@ -46,7 +37,7 @@ export class ScrapperService {
   }
   autoUpdateTeacherProfileWrap = async (teacherFolders, index) => {
     return async ()=>{
-      if(index==teacherFolders.length-1) return "completed";
+      if(index==teacherFolders.length-1){ this.autoUpdate(); return "completed";}
         if(index%100===0){this.httpService.get(this.recalcUrl);}
         try{
         this.updatingUser = JSON.parse(await fs.readFileSync(this.folderToDb+'pvoIns/'+teacherFolders[index], 'utf8'));
