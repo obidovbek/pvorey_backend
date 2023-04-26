@@ -11,9 +11,13 @@ export class ScrapperService {
   updatingUser;
   autoUpdateTeacherProfile;
   recalcUrl = 'https://serve.ferpi.uz/db/2022/recalc_rating.php';
-  folderToDb='../tmp/db_fdu/2022/';
+  // folderToDb='../tmp/db_fdu/2022/';
+  folderToDb='../../databases/kpi.fdu.uz/2022/';
+
   constructor(private httpService: HttpService) {}
- 
+  testtest(){
+    return this.httpService.get(this.recalcUrl).pipe(map(res=> {console.log('res', res); return res; }));
+  }
   async autoUpdate(){
     return await fs.readdir(this.folderToDb+'pvoIns', async (err, files)=>{
       if(err){console.log(err); return 12;}
@@ -66,7 +70,7 @@ export class ScrapperService {
         }catch(e){}
         if(i==articleUrls.length-1) this.autoUpdateTeacherProfile();
         else this.loadArticle(result, articleUrls, i+1, teacherFolders, index);
-      }, 5000)
+      }, 15000)
 
     }
     catch(e){}
