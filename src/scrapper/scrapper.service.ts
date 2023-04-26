@@ -15,9 +15,9 @@ export class ScrapperService {
   folderToDb='../../databases/kpi.fdu.uz/2022/';
 
   constructor(private httpService: HttpService) {}
-  testtest(){
-    return this.httpService.get(this.recalcUrl).pipe(map(res=> {console.log('res', res); return res; }));
-  }
+  // testtest(){
+  //   return this.httpService.get(this.recalcUrl).pipe(map(res=> {console.log('res', res); return res; }));
+  // }
   async autoUpdate(){
     return await fs.readdir(this.folderToDb+'pvoIns', async (err, files)=>{
       if(err){console.log(err); return 12;}
