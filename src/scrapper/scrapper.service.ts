@@ -70,7 +70,7 @@ export class ScrapperService {
         }catch(e){}
         if(i==articleUrls.length-1) this.autoUpdateTeacherProfile();
         else this.loadArticle(result, articleUrls, i+1, teacherFolders, index);
-      }, 15000)
+      }, 5000)
 
     }
     catch(e){}
