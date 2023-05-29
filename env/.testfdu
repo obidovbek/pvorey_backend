@@ -1,0 +1,4 @@
+PORT=3799
+RECALC=https://kpi.ferpi.uz/db/2023/recalc_rating.php
+FOLDERTODB=../../databases/kpi.fdu.uz/2023/
+TIMETOUPDATE=20000

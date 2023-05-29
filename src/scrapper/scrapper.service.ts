@@ -4,20 +4,22 @@ const jsdom = require("jsdom");
 const { JSDOM } = jsdom;
 import { map } from 'rxjs/operators';
 import * as fs from 'fs';
+import { ConfigService } from '@nestjs/config/dist';
 
 @Injectable()
 export class ScrapperService {
   
   updatingUser;
   autoUpdateTeacherProfile;
-  recalcUrl = 'https://kpi.fdu.uz/db/2023/recalc_rating.php';
-  // folderToDb='../tmp/db_fdu/2022/';
-  folderToDb='../../databases/kpi.fdu.uz/2022/';
 
-  constructor(private httpService: HttpService) {}
+  constructor(
+    private httpService: HttpService,
+    private configService: ConfigService  
+  ) {
+  }
 
   async autoUpdate(){
-    return await fs.readdir(this.folderToDb+'pvoIns', async (err, files)=>{
+    return await fs.readdir(this.configService.get('FOLDERTODB')+'pvoIns', async (err, files)=>{
       if(err){console.log(err); return 12;}
       this.autoUpdateTeacherProfile = await this.autoUpdateTeacherProfileWrap(files, 0);
       this.autoUpdateTeacherProfile();
@@ -26,10 +28,10 @@ export class ScrapperService {
   }
 
   async removeOldArticles(){
-    return await fs.readdir(this.folderToDb+'fieldsInform/1d5', (err, files)=>{
+    return await fs.readdir(this.configService.get('FOLDERTODB')+'fieldsInform/1d5', (err, files)=>{
       files?.map(file=>{
         if(file.indexOf('s'+this.updatingUser.added_id+'s') > -1){
-          fs.unlink(this.folderToDb+'fieldsInform/1d5/'+file, (err) => {
+          fs.unlink(this.configService.get('FOLDERTODB')+'fieldsInform/1d5/'+file, (err) => {
             if (err) throw err;
             console.log('File deleted successfully!');
           });
@@ -40,9 +42,9 @@ export class ScrapperService {
   autoUpdateTeacherProfileWrap = async (teacherFolders, index) => {
     return async ()=>{
       if(index==teacherFolders.length-1){ this.autoUpdate(); return "completed";}
-        if(index%100===0){this.httpService.get(this.recalcUrl);}
+        if(index%100===0){this.httpService.get(this.configService.get('RECALC'));}
         try{
-        this.updatingUser = JSON.parse(await fs.readFileSync(this.folderToDb+'pvoIns/'+teacherFolders[index], 'utf8'));
+        this.updatingUser = JSON.parse(await fs.readFileSync(this.configService.get('FOLDERTODB')+'pvoIns/'+teacherFolders[index], 'utf8'));
         await this.removeOldArticles();
         const articleUrls = await this.getAllArticleUrlFromProfile(this.updatingUser.google_link).toPromise();
         console.log('articleUrls', articleUrls);
@@ -61,14 +63,14 @@ export class ScrapperService {
         const article = await this.getArticle('https://scholar.google.ru'+articleUrls[i]).toPromise();
         result.push(article);
         try{
-          await fs.writeFile(this.folderToDb+'fieldsInform/1d5/'+article[article.length - 1].added_id+'.txt', JSON.stringify(article), function (err) {
+          await fs.writeFile(this.configService.get('FOLDERTODB')+'fieldsInform/1d5/'+article[article.length - 1].added_id+'.txt', JSON.stringify(article), function (err) {
             if (err) throw err;
             console.log('File created!');
           });
         }catch(e){}
         if(i==articleUrls.length-1) this.autoUpdateTeacherProfile();
         else this.loadArticle(result, articleUrls, i+1, teacherFolders, index);
-      }, 5000)
+      }, this.configService.get('TIMETOUPDATE'))
 
     }
     catch(e){}
@@ -177,30 +179,6 @@ export class ScrapperService {
       })
     )
   }
-  // async articleScapper(url:string) {
-  //   const browser = await puppeteer.launch();
-  //   const page = await browser.newPage();
-  //   await page.goto(url);
-  //   const result = await {
-  //     article_name: await page.$eval('#gsc_oci_title > a', el => el.textContent),
-  //     journal_name: await page.$eval('#gsc_oci_table > div:nth-child(3) > div.gsc_oci_value', el => el.textContent),
-  //     publishing_date: await page.$eval('#gsc_oci_table > div:nth-child(2) > div.gsc_oci_value', el => el.textContent),
-  //     citiations: 0
-  //   }
-  //   const avaYears = ['2019', '2020', '2021', '2022', '2023']
-  //   for(var i=1;i<20;i++){
-  //     try{
-  //       const year_string_attr = await page.$eval('#gsc_oci_graph_bars > a:nth-child('+i+')', el => el.attributes[0].value); 
-  //       if(this.isYearInArray(avaYears, year_string_attr)){
-  //         console.log('year_string_attr: ' + year_string_attr);
-  //         result.citiations += parseInt(await page.$eval('#gsc_oci_graph_bars > a:nth-child('+i+') > span', el => el.textContent));
-  //       }
-  //     }
-  //     catch(e){}
-  //   }
-  //   await browser.close();
-  //   return result;
-  // }
 
   isYearInArray(avaYears, link) {
     for(const year of avaYears){
