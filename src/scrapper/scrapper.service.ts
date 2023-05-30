@@ -42,7 +42,7 @@ export class ScrapperService {
   autoUpdateTeacherProfileWrap = async (teacherFolders, index) => {
     return async ()=>{
       if(index==teacherFolders.length-1){ this.autoUpdate(); return "completed";}
-        if(index%100===0){this.httpService.get(this.configService.get('RECALC'));}
+        // if(index%100===0){this.httpService.get(this.configService.get('RECALC'));}
         try{
         this.updatingUser = JSON.parse(await fs.readFileSync(this.configService.get('FOLDERTODB')+'pvoIns/'+teacherFolders[index], 'utf8'));
         await this.removeOldArticles();

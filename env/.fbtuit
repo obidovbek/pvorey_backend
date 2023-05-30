@@ -1,4 +1,4 @@
 PORT=3797
 RECALC=https://tsnqb.fbtuit.uz/db/2023/recalc_rating.php
-FOLDERTODB=../../../databases/tsnqb.fbtuit.uz/2023/
+FOLDERTODB=../../databases/tsnqb.fbtuit.uz/2023/
 TIMETOUPDATE=180000
