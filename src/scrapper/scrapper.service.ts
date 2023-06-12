@@ -63,6 +63,7 @@ export class ScrapperService {
         const article = await this.getArticle('https://scholar.google.ru'+articleUrls[i]).toPromise();
         result.push(article);
         try{
+          console.log('file created name', this.configService.get('FOLDERTODB'), article[article.length - 1].added_id)
           await fs.writeFile(this.configService.get('FOLDERTODB')+'fieldsInform/1d5/'+article[article.length - 1].added_id+'.txt', JSON.stringify(article), function (err) {
             if (err) throw err;
             console.log('File created!');
@@ -167,12 +168,12 @@ export class ScrapperService {
             "comment": "",
             "pvoNames": '',
             // "pvoNames": this.updatingUser.lname?.replace(/\s/g,'') + ' ' + this.updatingUser.fname?.replace(/\s/g,'') + ' ' + this.updatingUser.patronymic?.replace(/\s/g,''),
-            "added_id": '',
+            "added_id": Math.floor(Math.random() * 900000) + 100000,
             // "added_id": "s"+this.updatingUser.added_id+"s_"+Math.floor(100000000 + Math.random() * 900000000),
             "grade": Math.floor(1/((domwindoc.querySelector('#gsc_oci_table > div:nth-child(1) > div.gsc_oci_value')?.textContent.split(",").length)) * 100) / 100,
           }
         ]
-        console.log('result', result)
+        console.log('getArticle')
         return result;
       }catch(e){
         console.log(e)
