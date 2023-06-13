@@ -21,7 +21,7 @@ export class ScrapperService {
   async autoUpdate(){
     return await fs.readdir(this.configService.get('FOLDERTODB')+'pvoIns', async (err, files)=>{
       if(err){console.log(err); return 12;}
-      this.autoUpdateTeacherProfile = await this.autoUpdateTeacherProfileWrap(files, 0);
+      this.autoUpdateTeacherProfile = await this.autoUpdateTeacherProfileWrap(files, 229);
       this.autoUpdateTeacherProfile();
       return 1;
     })
@@ -66,7 +66,7 @@ export class ScrapperService {
           console.log('file created name', this.configService.get('FOLDERTODB'), article[article.length - 1].added_id)
           await fs.writeFile(this.configService.get('FOLDERTODB')+'fieldsInform/1d5/'+article[article.length - 1].added_id+'.txt', JSON.stringify(article), function (err) {
             if (err) throw err;
-            console.log('File created!');
+            console.log('File created! teacher', index);
           });
         }catch(e){}
         if(i==articleUrls.length-1) this.autoUpdateTeacherProfile();
@@ -126,7 +126,7 @@ export class ScrapperService {
         const result = [
           {
             "title": "Muallif F.I.Sh",
-            // "value": this.updatingUser.lname?.replace(/\s/g,'') + ' ' + this.updatingUser.fname?.replace(/\s/g,'') + ' ' + this.updatingUser.patronymic?.replace(/\s/g,''),
+            "value": this.updatingUser.lname?.replace(/\s/g,'') + ' ' + this.updatingUser.fname?.replace(/\s/g,'') + ' ' + this.updatingUser.patronymic?.replace(/\s/g,''),
             "type": "inputautocomplete"
           },
           {
@@ -166,14 +166,12 @@ export class ScrapperService {
             "user": "",
             "status": "complete",
             "comment": "",
-            "pvoNames": '',
-            // "pvoNames": this.updatingUser.lname?.replace(/\s/g,'') + ' ' + this.updatingUser.fname?.replace(/\s/g,'') + ' ' + this.updatingUser.patronymic?.replace(/\s/g,''),
-            "added_id": Math.floor(Math.random() * 900000) + 100000,
-            // "added_id": "s"+this.updatingUser.added_id+"s_"+Math.floor(100000000 + Math.random() * 900000000),
+            "pvoNames": this.updatingUser.lname?.replace(/\s/g,'') + ' ' + this.updatingUser.fname?.replace(/\s/g,'') + ' ' + this.updatingUser.patronymic?.replace(/\s/g,''),
+            "added_id": "s"+this.updatingUser.added_id+"s_"+Math.floor(100000000 + Math.random() * 900000000),
             "grade": Math.floor(1/((domwindoc.querySelector('#gsc_oci_table > div:nth-child(1) > div.gsc_oci_value')?.textContent.split(",").length)) * 100) / 100,
           }
         ]
-        console.log('getArticle')
+        // console.log('getArticle', result)
         return result;
       }catch(e){
         console.log(e)
