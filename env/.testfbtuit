@@ -1,0 +1,4 @@
+PORT=3002
+RECALC=https://tsnqb.fbtuit.uz/db/2023/recalc_rating.php
+FOLDERTODB=../tmp/tmp/databases/tsnqb.fbtuit.uz/2023/
+TIMETOUPDATE=20000

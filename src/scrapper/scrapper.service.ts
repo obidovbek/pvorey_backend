@@ -5,6 +5,7 @@ const { JSDOM } = jsdom;
 import { map } from 'rxjs/operators';
 import * as fs from 'fs';
 import { ConfigService } from '@nestjs/config/dist';
+import axios from 'axios';
 
 @Injectable()
 export class ScrapperService {
@@ -18,10 +19,10 @@ export class ScrapperService {
   ) {
   }
 
-  async autoUpdate(){
+  async autoUpdate(teacherIndex:number){
     return await fs.readdir(this.configService.get('FOLDERTODB')+'pvoIns', async (err, files)=>{
-      if(err){console.log(err); return 12;}
-      this.autoUpdateTeacherProfile = await this.autoUpdateTeacherProfileWrap(files, 229);
+      if(err){console.log(err); return 12;}//fdu 229 //fbtuit 134
+      this.autoUpdateTeacherProfile = await this.autoUpdateTeacherProfileWrap(files, teacherIndex);
       this.autoUpdateTeacherProfile();
       return 1;
     })
@@ -41,7 +42,7 @@ export class ScrapperService {
   }
   autoUpdateTeacherProfileWrap = async (teacherFolders, index) => {
     return async ()=>{
-      if(index==teacherFolders.length-1){ this.autoUpdate(); return "completed";}
+      if(index==teacherFolders.length-1){ this.autoUpdate(0); return "completed";}
         // if(index%100===0){this.httpService.get(this.configService.get('RECALC'));}
         try{
         this.updatingUser = JSON.parse(await fs.readFileSync(this.configService.get('FOLDERTODB')+'pvoIns/'+teacherFolders[index], 'utf8'));
@@ -90,7 +91,7 @@ export class ScrapperService {
         map((res:any)=>{
           const dom = new JSDOM(res); let article_url = []; let counter = 1; const domwindoc = dom.window.document;
           while(domwindoc.querySelector(`#gsc_a_b > tr:nth-child(${counter}) > td.gsc_a_c`) && parseInt(domwindoc.querySelector(`#gsc_a_b > tr:nth-child(${counter}) > td.gsc_a_c`).textContent)){
-            article_url.push(domwindoc.querySelector(`#gsc_a_b > tr:nth-child(${counter}) > td.gsc_a_t > a`).attributes[0].value)
+            article_url.push(domwindoc.querySelector(`#gsc_a_b > tr:nth-child(${counter}) > td.gsc_a_t > a`).attributes[0].value);
             counter++;
           }
           return article_url;
