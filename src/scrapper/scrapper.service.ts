@@ -30,30 +30,38 @@ export class ScrapperService {
 
   async removeOldArticles(){
     return await fs.readdir(this.configService.get('FOLDERTODB')+'fieldsInform/1d5', (err, files)=>{
-      files?.map(file=>{
-        if(file.indexOf('s'+this.updatingUser.added_id+'s') > -1){
-          fs.unlink(this.configService.get('FOLDERTODB')+'fieldsInform/1d5/'+file, (err) => {
-            if (err) throw err;
-            console.log('File deleted successfully!');
-          });
-        }
-      })
+      try{
+        files?.map(file=>{
+          if(file.indexOf('s'+this.updatingUser.added_id+'s') > -1){
+            fs.unlink(this.configService.get('FOLDERTODB')+'fieldsInform/1d5/'+file, (err) => {
+              if (err) throw err;
+              console.log('File deleted successfully!');
+            });
+          }
+        })
+      }catch(e){console.log('file remove error',e)}
     });
   }
   autoUpdateTeacherProfileWrap = async (teacherFolders, index) => {
     return async ()=>{
       if(index==teacherFolders.length-1){ this.autoUpdate(0); return "completed";}
-        // if(index%100===0){this.httpService.get(this.configService.get('RECALC'));}
         try{
-        this.updatingUser = JSON.parse(await fs.readFileSync(this.configService.get('FOLDERTODB')+'pvoIns/'+teacherFolders[index], 'utf8'));
-        await this.removeOldArticles();
-        const articleUrls = await this.getAllArticleUrlFromProfile(this.updatingUser.google_link).toPromise();
-        console.log('articleUrls', articleUrls);
-        if(articleUrls.length) {this.loadArticle([], articleUrls, 0, teacherFolders, index)}
-        else{ this.autoUpdateTeacherProfile();}
-      }catch(e){
-        this.autoUpdateTeacherProfile();
-      }
+          this.updatingUser = JSON.parse(await fs.readFileSync(this.configService.get('FOLDERTODB')+'pvoIns/'+teacherFolders[index], 'utf8'));
+          
+          await this.removeOldArticles();
+          
+          console.log('pvoIns:', this.updatingUser.lname + ' ' + this.updatingUser.fname + ' ' + this.updatingUser.patronymic)
+          console.log('pvoIns google_link:', this.updatingUser.google_link)
+          
+          if(!this.updatingUser.google_link){ this.autoUpdateTeacherProfile(); return index++; }
+          const articleUrls = await this.getAllArticleUrlFromProfile(this.updatingUser.google_link).toPromise();
+          console.log('articleUrls', articleUrls);
+          
+          if(articleUrls.length) {this.loadArticle([], articleUrls, 0, teacherFolders, index)}
+          else{ this.autoUpdateTeacherProfile();}
+        }catch(e){
+          this.autoUpdateTeacherProfile();
+        }
       return index++;
     }
 
@@ -68,6 +76,10 @@ export class ScrapperService {
           await fs.writeFile(this.configService.get('FOLDERTODB')+'fieldsInform/1d5/'+article[article.length - 1].added_id+'.txt', JSON.stringify(article), function (err) {
             if (err) throw err;
             console.log('File created! teacher', index);
+          });
+          await fs.writeFile(this.configService.get('FOLDERTODB')+'/lastUpdatedTeachIndex.txt', JSON.stringify({teacherIndex: index, date: new Date()}), function (err) {
+            if (err) throw err;
+            console.log('File created! lastUpdatedTeachIndex');
           });
         }catch(e){}
         if(i==articleUrls.length-1) this.autoUpdateTeacherProfile();

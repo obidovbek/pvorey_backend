@@ -2,3 +2,4 @@ PORT=3798
 RECALC=https://ferpi.tsnqb.uz/db/2023/recalc_rating.php
 FOLDERTODB=../../databases/ferpi.tsnqb.uz/2023/
 TIMETOUPDATE=180000
+STARTUPDATINGURL=https://ferpi.tsnqb.uz/api/scrapper

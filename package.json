@@ -12,7 +12,7 @@
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
-    "start:dev": "cross-env NODE_ENV=test nest start --watch",
+    "start:fdu": "cross-env NODE_ENV=testfdu nest start --watch",
     "start:fbtuit": "cross-env NODE_ENV=testfbtuit nest start --watch",
     "start:ferpi": "cross-env NODE_ENV=testferpi nest start --watch",
     "start:debug": "nest start --debug --watch",
