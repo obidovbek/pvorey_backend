@@ -32,7 +32,7 @@ export class CronService{
         const differenceInMinutes = (currentTime - lastUpdatedTime) / (1000 * 60);
         console.log('differenceInMinutes',lastUpdatedTeachIndex)
         if(differenceInMinutes > 30){
-          await axios.get(this.configService.get('STARTUPDATINGURL')+'/'+lastUpdatedTeachIndex.teacherIndex);
+          await axios.get(this.configService.get('STARTUPDATINGURL')+'/'+parseInt(lastUpdatedTeachIndex.teacherIndex + 1));
         }
       } catch (error) { console.error('Error:', error);}
 

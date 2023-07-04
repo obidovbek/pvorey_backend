@@ -47,15 +47,16 @@ export class ScrapperService {
       if(index==teacherFolders.length-1){ this.autoUpdate(0); return "completed";}
         try{
           this.updatingUser = JSON.parse(await fs.readFileSync(this.configService.get('FOLDERTODB')+'pvoIns/'+teacherFolders[index], 'utf8'));
-          
           await this.removeOldArticles();
           
           console.log('pvoIns:', this.updatingUser.lname + ' ' + this.updatingUser.fname + ' ' + this.updatingUser.patronymic)
           console.log('pvoIns google_link:', this.updatingUser.google_link)
           
           if(!this.updatingUser.google_link){ this.autoUpdateTeacherProfile(); return index++; }
-          const articleUrls = await this.getAllArticleUrlFromProfile(this.updatingUser.google_link).toPromise();
-          console.log('articleUrls', articleUrls);
+          const articleUrls:any = await this.getAllArticleUrlFromProfile(this.updatingUser.google_link);
+          console.log(index + ' user: ', articleUrls)
+          
+          // console.log('articleUrls', articleUrls);
           
           if(articleUrls.length) {this.loadArticle([], articleUrls, 0, teacherFolders, index)}
           else{ this.autoUpdateTeacherProfile();}
@@ -69,7 +70,7 @@ export class ScrapperService {
   async loadArticle(result:any, articleUrls:string[], i, teacherFolders, index) {
     try{
       await setTimeout(async()=>{
-        const article = await this.getArticle('https://scholar.google.ru'+articleUrls[i]).toPromise();
+        const article = await this.getArticle('https://scholar.google.ru'+articleUrls[i]);
         result.push(article);
         try{
           console.log('file created name', this.configService.get('FOLDERTODB'), article[article.length - 1].added_id)
@@ -89,109 +90,110 @@ export class ScrapperService {
     }
     catch(e){}
   }
-  getAllArticleUrlFromProfile(teacherUrl:string){
-    const url = teacherUrl+'&hl=en&cstart=1&pagesize=200';
-    let axiosConfig = {
-      headers: {
-          'Content-Type': 'application/json;charset=UTF-8',
-          "Access-Control-Allow-Origin": "*",
-      }
-    };
+  async getAllArticleUrlFromProfile(teacherUrl:string){
+    const url = new URL(teacherUrl) ;
+    const params = {
+      user: url.searchParams.get('user'),
+      hl: 'en',
+      cstart: 1,
+      pagesize: 200,
+    }
     try{
-      return this.httpService.post(url, {}, axiosConfig).pipe(
-        map(res=>res.data),
-        map((res:any)=>{
-          const dom = new JSDOM(res); let article_url = []; let counter = 1; const domwindoc = dom.window.document;
-          while(domwindoc.querySelector(`#gsc_a_b > tr:nth-child(${counter}) > td.gsc_a_c`) && parseInt(domwindoc.querySelector(`#gsc_a_b > tr:nth-child(${counter}) > td.gsc_a_c`).textContent)){
-            article_url.push(domwindoc.querySelector(`#gsc_a_b > tr:nth-child(${counter}) > td.gsc_a_t > a`).attributes[0].value);
-            counter++;
-          }
-          return article_url;
-        })
-      )
-    }catch(e){console.log(e);}
-  }
-  getArticle(url:string) {
-    // const url = 'https://scholar.google.ru/citations?view_op=view_citation&hl=en&user=I8defrcAAAAJ&cstart=1&citation_for_view=I8defrcAAAAJ:0N-VGjzr574C';
-    let axiosConfig = {
-      headers: {
-          'Content-Type': 'application/json;charset=UTF-8',
-          "Access-Control-Allow-Origin": "*",
+      const res = await this.httpService.axiosRef.get(url.origin+url.pathname, {params});
+      const dom = new JSDOM(res.data); let article_url = []; let counter = 1; const domwindoc = dom.window.document;
+      while(domwindoc.querySelector(`#gsc_a_b > tr:nth-child(${counter}) > td.gsc_a_c`) && parseInt(domwindoc.querySelector(`#gsc_a_b > tr:nth-child(${counter}) > td.gsc_a_c`).textContent)){
+        article_url.push(domwindoc.querySelector(`#gsc_a_b > tr:nth-child(${counter}) > td.gsc_a_t > a`).attributes[0].value);
+        counter++;
       }
-    };
-    return this.httpService.post(url, {}, axiosConfig).pipe(
-      map(res=>res.data),
-      map(async (res:any)=>{
+      return article_url;
+    }catch(e){console.log(e); }
+  }
+  async getArticle(url:string) {
+    const newUrl = new URL(url) ;
+    const params = {
+      user: newUrl.searchParams.get('user'),
+      citation_for_view: newUrl.searchParams.get('citation_for_view'),
+      view_op: 'view_citation',
+      oe: 'ASCII',
+      hl: 'ru',
+      cstart: 1,
+      pagesize: 100,
+    }
+    try{
+      const res = await this.httpService.axiosRef.get(newUrl.origin+newUrl.pathname, {params});
+      const dom = new JSDOM(res.data); const domwindoc = dom.window.document;
+      let citiations = 0;
+      const avaYears = ['2019', '2020', '2021', '2022', '2023']
+      for(var i=1;i<20;i++){
+        try{
+          const year_string_attr = await domwindoc.querySelector(`#gsc_oci_graph_bars > a:nth-child(${i})`).attributes[0].value; 
+          if(this.isYearInArray(avaYears, year_string_attr)){
+            citiations += parseInt(domwindoc.querySelector(`#gsc_oci_graph_bars > a:nth-child(${i}) > span`).textContent)
+          }
+        }
+        catch(e){}
+      } 
+      const result = [
+        {
+          "title": "Muallif F.I.Sh",
+          "value": this.updatingUser.lname?.replace(/\s/g,'') + ' ' + this.updatingUser.fname?.replace(/\s/g,'') + ' ' + this.updatingUser.patronymic?.replace(/\s/g,''),
+          "type": "inputautocomplete"
+        },
+        {
+          "title": "Jurnalning nomi",
+          "value": domwindoc.querySelector('#gsc_oci_table > div:nth-child(3) > div.gsc_oci_value')?.textContent,
+          "type": "input"
+        },
+        {
+          "title": "Jurnalning nashr etilgan yili va oyi",
+          "value": domwindoc.querySelector('#gsc_oci_table > div:nth-child(2) > div.gsc_oci_value')?.textContent,
+          "type": "input"
+        },
+        {
+          "title": "Maqolaning nomi",
+          "value": domwindoc.querySelector('#gsc_oci_title > a')?.textContent,
+          "type": "input"
+        },
+        {
+          "title": "Maqolaning qaysi tilda chop etilganligi",
+          "value": "O'zbek",
+          "type": "input"
+        },
+        {
+          "title": "Chop etilgan materiallarning «Google Scholar» va boshqa xalqaro e'tirof etilgan qidiruv tizimlardagi internet manzili (giper xavolasi)",
+          "value": url,
+          "type": "input",
+          "addition": "link"
+        },
+        {
+          "title": "iqtiboslar soni",
+          "value": citiations,
+          "type": "number"
+        },
+        {
+          "created": "08-09-2022 15:07",
+          "indexId": "1d5",
+          "user": "",
+          "status": "complete",
+          "comment": "",
+          "pvoNames": this.updatingUser.lname?.replace(/\s/g,'') + ' ' + this.updatingUser.fname?.replace(/\s/g,'') + ' ' + this.updatingUser.patronymic?.replace(/\s/g,''),
+          "added_id": "s"+this.updatingUser.added_id+"s_"+Math.floor(100000000 + Math.random() * 900000000),
+          "grade": Math.floor(1/((domwindoc.querySelector('#gsc_oci_table > div:nth-child(1) > div.gsc_oci_value')?.textContent.split(",").length)) * 100) / 100,
+        }
+      ]
+      // console.log('getArticle', result)
+      return result;
+    }catch(e){
+      console.log(e)
+    }  
+    // return this.httpService.post(url, {}, axiosConfig).pipe(
+    //   map(res=>res.data),
+    //   map(async (res:any)=>{
 
-      try{
-        const dom = new JSDOM(res); const domwindoc = dom.window.document;
-        let citiations = 0;
-        const avaYears = ['2019', '2020', '2021', '2022', '2023']
-        for(var i=1;i<20;i++){
-          try{
-            const year_string_attr = await domwindoc.querySelector(`#gsc_oci_graph_bars > a:nth-child(${i})`).attributes[0].value; 
-            if(this.isYearInArray(avaYears, year_string_attr)){
-              citiations += parseInt(domwindoc.querySelector(`#gsc_oci_graph_bars > a:nth-child(${i}) > span`).textContent)
-            }
-          }
-          catch(e){}
-        } 
-        const result = [
-          {
-            "title": "Muallif F.I.Sh",
-            "value": this.updatingUser.lname?.replace(/\s/g,'') + ' ' + this.updatingUser.fname?.replace(/\s/g,'') + ' ' + this.updatingUser.patronymic?.replace(/\s/g,''),
-            "type": "inputautocomplete"
-          },
-          {
-            "title": "Jurnalning nomi",
-            "value": domwindoc.querySelector('#gsc_oci_table > div:nth-child(3) > div.gsc_oci_value')?.textContent,
-            "type": "input"
-          },
-          {
-            "title": "Jurnalning nashr etilgan yili va oyi",
-            "value": domwindoc.querySelector('#gsc_oci_table > div:nth-child(2) > div.gsc_oci_value')?.textContent,
-            "type": "input"
-          },
-          {
-            "title": "Maqolaning nomi",
-            "value": domwindoc.querySelector('#gsc_oci_title > a')?.textContent,
-            "type": "input"
-          },
-          {
-            "title": "Maqolaning qaysi tilda chop etilganligi",
-            "value": "O'zbek",
-            "type": "input"
-          },
-          {
-            "title": "Chop etilgan materiallarning «Google Scholar» va boshqa xalqaro e'tirof etilgan qidiruv tizimlardagi internet manzili (giper xavolasi)",
-            "value": url,
-            "type": "input",
-            "addition": "link"
-          },
-          {
-            "title": "iqtiboslar soni",
-            "value": citiations,
-            "type": "number"
-          },
-          {
-            "created": "08-09-2022 15:07",
-            "indexId": "1d5",
-            "user": "",
-            "status": "complete",
-            "comment": "",
-            "pvoNames": this.updatingUser.lname?.replace(/\s/g,'') + ' ' + this.updatingUser.fname?.replace(/\s/g,'') + ' ' + this.updatingUser.patronymic?.replace(/\s/g,''),
-            "added_id": "s"+this.updatingUser.added_id+"s_"+Math.floor(100000000 + Math.random() * 900000000),
-            "grade": Math.floor(1/((domwindoc.querySelector('#gsc_oci_table > div:nth-child(1) > div.gsc_oci_value')?.textContent.split(",").length)) * 100) / 100,
-          }
-        ]
-        // console.log('getArticle', result)
-        return result;
-      }catch(e){
-        console.log(e)
-      }  
-        return ;
-      })
-    )
+
+    //       return ;
+    //     })
+    // )
   }
 
   isYearInArray(avaYears, link) {
