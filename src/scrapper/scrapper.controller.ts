@@ -10,15 +10,17 @@ export class ScrapperController {
     return this.scrapperService.autoUpdate(id);
   }
 
-  @Get('getarticles')
+  @Post('getarticles')
   getArticles() {
-    const url = 'https://scholar.google.ru/citations?view_op=view_citation&hl=en&user=Dz3oo60AAAAJ&citation_for_view=Dz3oo60AAAAJ:O3NaXMp0MMsC'
+    console.log('getarticles')
+    const url = 'https://scholar.google.ru/citations?view_op=view_citation&hl=en&oe=ASCII&user=r-E96kIAAAAJ&cstart=1&pagesize=100&citation_for_view=r-E96kIAAAAJ:JV2RwH3_ST0C'
     return this.scrapperService.getArticle(url);
   }
 
   @Post('getallarticles')
   rdr() {
-    const url = 'https://scholar.google.com/citations?hl=ru&authuser=8&user=r-E96kIAAAAJ'
+    const url = 'https://scholar.google.com/citations?hl=ru&user=1XZdxIAAAAAJ'
     return this.scrapperService.getAllArticleUrlFromProfile(url);
   }
+  
 }

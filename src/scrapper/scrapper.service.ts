@@ -23,6 +23,13 @@ export class ScrapperService {
     return await fs.readdir(this.configService.get('FOLDERTODB')+'pvoIns', async (err, files)=>{
       if(err){console.log(err); return 12;}//fdu 229 //fbtuit 134
       this.autoUpdateTeacherProfile = await this.autoUpdateTeacherProfileWrap(files, teacherIndex);
+      // files.map(async (file, index)=>{
+      //   const t:any =  JSON.parse(await fs.readFileSync(this.configService.get('FOLDERTODB')+'pvoIns/'+file, 'utf8'));
+      //   if(t.lname === 'Raximjonova'){
+      //     console.log(file, index)
+      //     console.log('teacher: ', t)
+      //   }
+      // });
       this.autoUpdateTeacherProfile();
       return 1;
     })
@@ -55,8 +62,8 @@ export class ScrapperService {
           if(!this.updatingUser.google_link){ this.autoUpdateTeacherProfile(); return index++; }
           const articleUrls:any = await this.getAllArticleUrlFromProfile(this.updatingUser.google_link);
           console.log(index + ' user: ', articleUrls)
-          
-          // console.log('articleUrls', articleUrls);
+          this.updatingUser.google_update_not_working = !!articleUrls;
+          await fs.writeFileSync(this.configService.get('FOLDERTODB')+'pvoIns/'+teacherFolders[index], JSON.stringify(this.updatingUser), 'utf8');
           
           if(articleUrls.length) {this.loadArticle([], articleUrls, 0, teacherFolders, index)}
           else{ this.autoUpdateTeacherProfile();}
@@ -74,15 +81,9 @@ export class ScrapperService {
         result.push(article);
         try{
           console.log('file created name', this.configService.get('FOLDERTODB'), article[article.length - 1].added_id)
-          await fs.writeFile(this.configService.get('FOLDERTODB')+'fieldsInform/1d5/'+article[article.length - 1].added_id+'.txt', JSON.stringify(article), function (err) {
-            if (err) throw err;
-            console.log('File created! teacher', index);
-          });
-          await fs.writeFile(this.configService.get('FOLDERTODB')+'/lastUpdatedTeachIndex.txt', JSON.stringify({teacherIndex: index, date: new Date()}), function (err) {
-            if (err) throw err;
-            console.log('File created! lastUpdatedTeachIndex');
-          });
-        }catch(e){}
+          await fs.writeFileSync(this.configService.get('FOLDERTODB')+'fieldsInform/1d5/'+article[article.length - 1].added_id+'.txt', JSON.stringify(article), 'utf8');
+          await fs.writeFileSync(this.configService.get('FOLDERTODB')+'/lastUpdatedTeachIndex.txt', JSON.stringify({teacherIndex: index, date: new Date()}), 'utf8');
+        }catch(e){console.log('error loadArticle')}
         if(i==articleUrls.length-1) this.autoUpdateTeacherProfile();
         else this.loadArticle(result, articleUrls, i+1, teacherFolders, index);
       }, this.configService.get('TIMETOUPDATE'))
@@ -106,7 +107,7 @@ export class ScrapperService {
         counter++;
       }
       return article_url;
-    }catch(e){console.log(e); }
+    }catch(e){console.log('error getAllArticleUrlFromProfile'); }
   }
   async getArticle(url:string) {
     const newUrl = new URL(url) ;
@@ -115,24 +116,25 @@ export class ScrapperService {
       citation_for_view: newUrl.searchParams.get('citation_for_view'),
       view_op: 'view_citation',
       oe: 'ASCII',
-      hl: 'ru',
+      hl: 'en',
       cstart: 1,
-      pagesize: 100,
+      pagesize: 100
     }
     try{
       const res = await this.httpService.axiosRef.get(newUrl.origin+newUrl.pathname, {params});
       const dom = new JSDOM(res.data); const domwindoc = dom.window.document;
       let citiations = 0;
       const avaYears = ['2019', '2020', '2021', '2022', '2023']
-      for(var i=1;i<20;i++){
-        try{
-          const year_string_attr = await domwindoc.querySelector(`#gsc_oci_graph_bars > a:nth-child(${i})`).attributes[0].value; 
+      try{
+        const parentElement = await domwindoc.querySelector('#gsc_oci_graph_bars');
+        const anchorTags = Array.from(parentElement.childNodes).filter((node:any) => node.nodeName === 'A');
+        await anchorTags.map(async (anchorTag:any, i:number) => {
+          const year_string_attr = await anchorTag.attributes[0].value
           if(this.isYearInArray(avaYears, year_string_attr)){
-            citiations += parseInt(domwindoc.querySelector(`#gsc_oci_graph_bars > a:nth-child(${i}) > span`).textContent)
+              citiations += parseInt(anchorTag.querySelector('span').textContent)
           }
-        }
-        catch(e){}
-      } 
+          });
+        }catch(e){console.log('error getArticle');}
       const result = [
         {
           "title": "Muallif F.I.Sh",
@@ -176,12 +178,14 @@ export class ScrapperService {
           "user": "",
           "status": "complete",
           "comment": "",
+          // "pvoNames": "",
+          // "added_id": "",
           "pvoNames": this.updatingUser.lname?.replace(/\s/g,'') + ' ' + this.updatingUser.fname?.replace(/\s/g,'') + ' ' + this.updatingUser.patronymic?.replace(/\s/g,''),
           "added_id": "s"+this.updatingUser.added_id+"s_"+Math.floor(100000000 + Math.random() * 900000000),
           "grade": Math.floor(1/((domwindoc.querySelector('#gsc_oci_table > div:nth-child(1) > div.gsc_oci_value')?.textContent.split(",").length)) * 100) / 100,
         }
       ]
-      // console.log('getArticle', result)
+      console.log('getArticle iqtibostol', result[6])
       return result;
     }catch(e){
       console.log(e)
