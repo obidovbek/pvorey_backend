@@ -37,8 +37,8 @@ export class ScrapperService {
       if(index==teacherFolders.length-1){ this.autoUpdate('0'); return "completed";}
         try{
           this.updatingUser = await JSON.parse(await fs.readFileSync(this.configService.get('FOLDERTODB')+'pvoIns/'+teacherFolders[index], 'utf8'));
-          console.log('pvoIns:', this.updatingUser.lname + ' ' + this.updatingUser.fname + ' ' + this.updatingUser.patronymic)
-          console.log('pvoIns google_link ',+index+': '+ this.updatingUser.google_link)
+          console.log(this.updatingUser.lname + ' ' + this.updatingUser.fname + ' ' + this.updatingUser.patronymic)
+          console.log('google_link ',+index+': '+ this.updatingUser.google_link)
 
           if(!this.updatingUser.google_link){index++; setTimeout(()=>{ this.autoUpdateTeacherProfile(); },5000); return; }
 
@@ -46,15 +46,15 @@ export class ScrapperService {
           this.updatingUser.google_update_not_working = !!articleUrls.length;
           console.log(index + ' user: ', !!articleUrls.length)///////////////////////////////////////
           await fs.writeFileSync(this.configService.get('FOLDERTODB')+'pvoIns/'+teacherFolders[index], JSON.stringify(this.updatingUser), 'utf8');
-          // if(articleUrls) {
+          if(articleUrls.length) {
+              enableToGet=0;
           //     await this.removeOldArticles();
           //     this.loadArticle([], articleUrls, 0, teacherFolders, index)
           //     index = index + 1
-          // }else{
-
+          }else{
               enableToGet++; index++;
               setTimeout(()=>{ this.autoUpdateTeacherProfile(); },5000)
-          // }
+          }
         }catch(e){
           console.log('error 2', e.message)
           if(enableToGet>10){console.log('google get not working'); return;}
