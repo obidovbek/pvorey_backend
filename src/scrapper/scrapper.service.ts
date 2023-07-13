@@ -40,11 +40,11 @@ export class ScrapperService {
           console.log(this.updatingUser.lname + ' ' + this.updatingUser.fname + ' ' + this.updatingUser.patronymic)
           console.log('google_link ',+index+': '+ this.updatingUser.google_link)
 
-          if(!this.updatingUser.google_link){index++; setTimeout(()=>{ this.autoUpdateTeacherProfile(); },5000); return; }
+          // if(!this.updatingUser.google_link){index++; setTimeout(()=>{ this.autoUpdateTeacherProfile(); },5000); return; }
 
-          const articleUrls:any = await this.getAllArticleUrlFromProfile(this.updatingUser.google_link);
+          const articleUrls:any = this.updatingUser.google_link ? (await this.getAllArticleUrlFromProfile(this.updatingUser.google_link)) : [];
           this.updatingUser.google_update_not_working = !!articleUrls.length;
-          console.log(index + ' user: ', !!articleUrls.length)///////////////////////////////////////
+          console.log(index + ' user: ', !!articleUrls.length)
           await fs.writeFileSync(this.configService.get('FOLDERTODB')+'pvoIns/'+teacherFolders[index], JSON.stringify(this.updatingUser), 'utf8');
           if(articleUrls.length) {
               enableToGet=0;
