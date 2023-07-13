@@ -51,10 +51,11 @@ export class ScrapperService {
           //     await this.removeOldArticles();
           //     this.loadArticle([], articleUrls, 0, teacherFolders, index)
           //     index = index + 1
-          }else{
+          }
+          // else{
               enableToGet++; index++;
               setTimeout(()=>{ this.autoUpdateTeacherProfile(); },5000)
-          }
+          // }
         }catch(e){
           console.log('error 2', e.message)
           if(enableToGet>10){console.log('google get not working'); return;}
