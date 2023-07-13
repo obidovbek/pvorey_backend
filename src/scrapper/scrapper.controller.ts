@@ -6,7 +6,7 @@ export class ScrapperController {
   constructor(private scrapperService: ScrapperService) {}
 
   @Get(':id')
-  scrapperController(@Param('id') id: number) {
+  scrapperController(@Param('id') id: string) {
     return this.scrapperService.autoUpdate(id);
   }
 

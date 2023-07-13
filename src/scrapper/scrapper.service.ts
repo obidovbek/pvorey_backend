@@ -19,22 +19,51 @@ export class ScrapperService {
   ) {
   }
 
-  async autoUpdate(teacherIndex:number){
-    return await fs.readdir(this.configService.get('FOLDERTODB')+'pvoIns', async (err, files)=>{
-      if(err){console.log(err); return 12;}//fdu 229 //fbtuit 134
-      this.autoUpdateTeacherProfile = await this.autoUpdateTeacherProfileWrap(files, teacherIndex);
-      // files.map(async (file, index)=>{
-      //   const t:any =  JSON.parse(await fs.readFileSync(this.configService.get('FOLDERTODB')+'pvoIns/'+file, 'utf8'));
-      //   if(t.lname === 'Raximjonova'){
-      //     console.log(file, index)
-      //     console.log('teacher: ', t)
-      //   }
-      // });
+  async autoUpdate(teacherIndex:string){
+    try{
+      const files = await fs.readdirSync(this.configService.get('FOLDERTODB')+'pvoIns')
+      this.autoUpdateTeacherProfile = await this.autoUpdateTeacherProfileWrap(files, parseInt(teacherIndex));
       this.autoUpdateTeacherProfile();
       return 1;
-    })
+    }catch(e){ console.log('error 1', e.message) }
   }
 
+
+  autoUpdateTeacherProfileWrap = async (teacherFolders, index) => {
+    let enableToGet = 0;
+    if(enableToGet>10){console.log('google get not working'); return;}
+    return async ()=>{
+
+      if(index==teacherFolders.length-1){ this.autoUpdate('0'); return "completed";}
+        try{
+          this.updatingUser = await JSON.parse(await fs.readFileSync(this.configService.get('FOLDERTODB')+'pvoIns/'+teacherFolders[index], 'utf8'));
+          console.log('pvoIns:', this.updatingUser.lname + ' ' + this.updatingUser.fname + ' ' + this.updatingUser.patronymic)
+          console.log('pvoIns google_link ',+index+': '+ this.updatingUser.google_link)
+
+          if(!this.updatingUser.google_link){index++; setTimeout(()=>{ this.autoUpdateTeacherProfile(); },5000); return; }
+
+          const articleUrls:any = await this.getAllArticleUrlFromProfile(this.updatingUser.google_link);
+          this.updatingUser.google_update_not_working = !!articleUrls.length;
+          console.log(index + ' user: ', !!articleUrls.length)///////////////////////////////////////
+          await fs.writeFileSync(this.configService.get('FOLDERTODB')+'pvoIns/'+teacherFolders[index], JSON.stringify(this.updatingUser), 'utf8');
+          // if(articleUrls) {
+          //     await this.removeOldArticles();
+          //     this.loadArticle([], articleUrls, 0, teacherFolders, index)
+          //     index = index + 1
+          // }else{
+
+              enableToGet++; index++;
+              setTimeout(()=>{ this.autoUpdateTeacherProfile(); },5000)
+          // }
+        }catch(e){
+          console.log('error 2', e.message)
+          if(enableToGet>10){console.log('google get not working'); return;}
+          enableToGet++; index++;
+          setTimeout(()=>{ this.autoUpdateTeacherProfile(); },5000)
+        }
+    }
+
+  }
   async removeOldArticles(){
     return await fs.readdir(this.configService.get('FOLDERTODB')+'fieldsInform/1d5', (err, files)=>{
       try{
@@ -48,31 +77,6 @@ export class ScrapperService {
         })
       }catch(e){console.log('file remove error',e)}
     });
-  }
-  autoUpdateTeacherProfileWrap = async (teacherFolders, index) => {
-    return async ()=>{
-      if(index==teacherFolders.length-1){ this.autoUpdate(0); return "completed";}
-        try{
-          this.updatingUser = JSON.parse(await fs.readFileSync(this.configService.get('FOLDERTODB')+'pvoIns/'+teacherFolders[index], 'utf8'));
-          await this.removeOldArticles();
-          
-          console.log('pvoIns:', this.updatingUser.lname + ' ' + this.updatingUser.fname + ' ' + this.updatingUser.patronymic)
-          console.log('pvoIns google_link:', this.updatingUser.google_link)
-          
-          if(!this.updatingUser.google_link){ this.autoUpdateTeacherProfile(); return index++; }
-          const articleUrls:any = await this.getAllArticleUrlFromProfile(this.updatingUser.google_link);
-          console.log(index + ' user: ', articleUrls)
-          this.updatingUser.google_update_not_working = !!articleUrls;
-          await fs.writeFileSync(this.configService.get('FOLDERTODB')+'pvoIns/'+teacherFolders[index], JSON.stringify(this.updatingUser), 'utf8');
-          
-          if(articleUrls.length) {this.loadArticle([], articleUrls, 0, teacherFolders, index)}
-          else{ this.autoUpdateTeacherProfile();}
-        }catch(e){
-          this.autoUpdateTeacherProfile();
-        }
-      return index++;
-    }
-
   }
   async loadArticle(result:any, articleUrls:string[], i, teacherFolders, index) {
     try{
